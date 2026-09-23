@@ -206,6 +206,7 @@ export function App() {
         }}
         onSave={handleSavePatient}
         initialData={editingPatient}
+        appointments={appointments}
       />
 
       <WhatsAppSimulatorDrawer

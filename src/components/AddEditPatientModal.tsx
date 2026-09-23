@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import type { Appointment } from '../types';
 import { autoAssignDoctor } from '../services/doctorMatcher';
-import { User, X, Sparkles, CheckCircle2, Stethoscope, Award, FileText } from 'lucide-react';
+import { User, X, Sparkles, CheckCircle2, Stethoscope, Award, FileText, AlertTriangle } from 'lucide-react';
 
 interface AddEditPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
   initialData?: Appointment | null;
+  appointments: Appointment[];
 }
 
 export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialData
+  initialData,
+  appointments
 }) => {
   const [patientName, setPatientName] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,7 +30,11 @@ export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
     { label: 'Toothache / Cavity', text: 'Severe tooth pain and cavity sensitivity' },
     { label: 'Chest Discomfort / Heart', text: 'Chest tightness and high blood pressure concern' },
     { label: 'Skin Rash / Allergy', text: 'Red itching skin rash and allergic reaction' },
-    { label: 'Fever / Flu', text: 'Viral fever, cough, cold and body pain' }
+    { label: 'Fever / Flu', text: 'Viral fever, cough, cold and body pain' },
+    { label: 'Menstrual / PCOS', text: 'Irregular periods and PCOS hormonal problem' },
+    { label: 'Bone / Back Pain', text: 'Severe joint pain and lower back pain' },
+    { label: 'Ear / Throat', text: 'Throat infection and earache' },
+    { label: 'Brain / Migraine', text: 'Frequent migraine headache and dizziness' }
   ];
 
   useEffect(() => {
@@ -54,9 +60,19 @@ export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
   // Real-time matched doctor specifications
   const { doctor, matchReason } = autoAssignDoctor(patientProblem);
 
+  // Check if doctor is already booked at selected Date and Time
+  const isSlotBooked = appointments.some(a => 
+    a.doctor_name.toLowerCase() === doctor.name.toLowerCase() &&
+    a.appointment_date.toLowerCase() === appointmentDate.toLowerCase() &&
+    a.appointment_time.toLowerCase() === appointmentTime.toLowerCase() &&
+    a.status !== 'CANCELLED' &&
+    a.id !== (initialData?.id || '')
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim() || !phone.trim() || !patientProblem.trim()) return;
+    if (isSlotBooked) return;
 
     onSave({
       patient_name: patientName,
@@ -137,7 +153,7 @@ export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
             <textarea
               required
               rows={2}
-              placeholder="Describe symptoms e.g. Severe tooth pain and cavity, viral fever, chest discomfort..."
+              placeholder="Describe symptoms e.g. Toothache, periods problem, back pain, migraine..."
               value={patientProblem}
               onChange={(e) => setPatientProblem(e.target.value)}
               className="w-full bg-[#090A12] border border-white/15 rounded-xl p-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 font-medium"
@@ -252,6 +268,22 @@ export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
             </div>
           </div>
 
+          {/* Slot Collision Alert */}
+          {isSlotBooked && (
+            <div className="bg-red-500/20 border-2 border-red-500 text-red-300 p-3.5 rounded-xl flex items-center gap-3 font-extrabold text-xs shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse">
+              <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-red-400 uppercase tracking-widest text-[10px]">SLOT COLLISION DETECTED</span>
+                <span className="text-white text-xs font-black tracking-wide">
+                  ALREADY BOOKED PLEASE CHOOSE ANOTHER SLOT
+                </span>
+                <span className="text-[10px] text-red-200/90 font-normal">
+                  {doctor.name} already has a confirmed booking on {appointmentDate} at {appointmentTime}.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
             <button
@@ -263,10 +295,15 @@ export const AddEditPatientModal: React.FC<AddEditPatientModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl text-xs font-extrabold text-black bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 hover:brightness-110 shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all flex items-center gap-1.5"
+              disabled={isSlotBooked}
+              className={`px-6 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                isSlotBooked
+                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                  : 'text-black bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 hover:brightness-110 shadow-[0_0_20px_rgba(249,115,22,0.4)]'
+              }`}
             >
               <Sparkles className="w-4 h-4 text-black" />
-              <span>Confirm & Dispatch WhatsApp</span>
+              <span>{isSlotBooked ? 'Slot Unavailable' : 'Confirm & Dispatch WhatsApp'}</span>
             </button>
           </div>
 
